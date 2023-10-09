@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="templates/css/enter_shop_prompt.css">
+</head>
+<body>
+    <div id="prompt-modal" class="prompt">
+        <div class="modal-content">
+            <div class="prompt-modal-header">
+                <h2>Hey there!</h2>
+                <p>We're glad you're here :)<br>Please enter your information in order to start browsing.</p>
+            </div>
+            <form id="user-form">
+                <div class="prompt-questions">
+                    <div class="form-question">
+                        <p>First Name</p>
+                        <input type="text" class="form-control text-center custom-input" placeholder="John" id="first_name" required>
+                    </div>
+                    <div class="form-question">
+                        <p>Last Name</p>
+                        <input type="text" class="form-control text-center custom-input" placeholder="Doe" id="last_name" required>
+                    </div>
+                    <div class="form-question">
+                        <p>Email&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</p>
+                        <input type="email" class="form-control text-center custom-input" placeholder="john.doe@example.com" id="email" required>
+                    </div>
+                </div>
+                <div class="prompt-submit">
+                    <button id="form-submit" type="button" onclick="submitEntryForm()">Start Browsing</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+
+    </script>
+</body>
+</html>

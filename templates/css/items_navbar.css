@@ -1,0 +1,57 @@
+ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #3f455f;
+}
+
+li {
+    float: left;
+}
+
+li a {
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+li a:hover:not(.active) {
+    background-color: #111;
+}
+
+.active {
+    background-color: #04AA6D;
+}
+
+.fixed-navbar {
+    margin: 0 auto;
+    position: fixed;
+    top: 0;
+    width: 75%;
+    z-index: 100;
+}
+
+.cart-icon {
+    position: relative;
+}
+
+/* Style for the cart icon */
+.cart-icon i {
+    font-size: 20px;
+}
+
+/* Style for the counter */
+.cart-counter {
+    overflow: visible;
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background-color: red;
+    color: white;
+    border-radius: 50%;
+    padding: 5px 10px;
+    font-size: 12px;
+}

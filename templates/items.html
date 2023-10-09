@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Items</title>
+        
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <link rel="stylesheet" href="templates/css/items.css">
+
+    </head>
+    <body>
+        <!-- Navbar -->
+        {% include 'items_navbar.html' %}
+
+        <!-- Enter Prompt Modal -->
+        {% include 'enter_shop_prompt.html' %}
+
+        <!-- Cart Modal -->
+        {% include 'cart_modal.html' %}
+
+        <!-- Main Ordering Table -->
+        <div class="container">
+            <h1 class="text-center">ITEMS</h1>
+            <div class="row">
+                {% for item in items %}
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="inner_row">
+                                <div class="col" style="text-align: left;">
+                                    <h5 class="card-title">{{ item.name }}</h5>
+                                    <p class="card-text">{{ item.description }}</p>
+                                </div>
+                                <div class="col">
+                                    <div class="text-end">
+                                        <p class="price">Price: ${{ item.price }}</p>
+                                        <p class="stock">In Stock: {{ item.num_in_stock }}</p>
+                                    </div>
+                                </div>
+                                <div class="col d-flex flex-column justify-content-center align-items-center" style="margin-top: 2%;">
+                                    <input type="number" min="1" pattern="[0-9]+" class="form-control text-center custom-input" placeholder="Quantity" id="{{ item.item_id }}-quantity">
+                                    <button class="btn custom-btn btn-primary mt-2" style="margin-left: 5px;"  onclick="addToCart('{{ item.item_id }}', '{{ item.name }}', '{{ item.price }}')">Add to cart</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </body>
+    <script src="templates/js/items-management.js"></script>
+</html>

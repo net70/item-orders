@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+        <link rel="stylesheet" href="templates/css/items_navbar.css">
+    </head>
+    <body>
+        <div id="navbar-wrapper">
+            <ul>
+              <li><a href="#home">Home</a></li>
+              <li><a href="#news">News</a></li>
+              <li><a href="#contact">Contact</a></li>
+              <li style="float:right" class="cart-icon">
+                <a class="active" href="#" onclick="openCartModal()">
+                  <i class="fas fa-shopping-cart"></i>
+                  <span class="cart-counter" id="cart-counter">0</span> <!-- Update the counter dynamically -->
+                </a>
+              </li>
+            </ul>
+          </div>
+
+        <script>
+            // JavaScript to handle scrolling and applying the fixed-navbar class
+            window.addEventListener('scroll', function() {
+              var navbar = document.getElementById('navbar-wrapper');
+              if (window.scrollY > 0) {
+                navbar.classList.add('fixed-navbar');
+              } else {
+                navbar.classList.remove('fixed-navbar');
+              }
+            });
+
+            function openCartModal(){
+                const cartModal = document.querySelector('#cart-modal');
+                cartModal.style.display = 'block';
+            }
+          </script>
+    </body>
+</html>

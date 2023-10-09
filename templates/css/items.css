@@ -1,0 +1,97 @@
+/* Set the background color and font for the body */
+body {
+    background-color: #333; /* Dark background color */
+    font-family: Arial, sans-serif;
+    margin-left: 12.5%;
+    margin-right: 12.5%;
+    color: #fff; /* White text color */
+}
+
+/* Add margin to the top of the container */
+.container {
+    margin-top: 50px;
+}
+
+/* Style for the card container */
+.card {
+    border: none;
+    background-color: #555; /* Dark card background color */
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 125px; /* Set a fixed height for consistency */
+    margin-bottom: 20px;
+}
+
+/* Style for the card on hover 
+.card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+} */
+
+.inner_row {
+display:flex;
+flex-wrap: wrap;
+padding: 10px;
+}
+
+.col {
+margin: 0 auto;
+width: 33%;
+height: 50%;
+text-align: center;
+}
+
+/* Style for the card title (item name) */
+.card-title {
+    font-size: 1.5rem;
+    margin: 10px 0; /* Add margin to separate title from description */
+}
+
+/* Style for the card text (item description) */
+.card-text {
+    font-size: 1.25rem;
+}
+
+/* Style for the price */
+.price {
+    font-size: 1.25rem;
+    color: #4da3ff; /* Blue price color */
+    font-weight: bold;
+    margin-top: 0 auto; /* Push to the bottom */
+    margin-bottom: 10px;
+}
+
+/* Style for the stock (number in stock) */
+.stock {
+    font-size: 1.05rem;
+    color: #28a745; /* Green stock color */
+    font-weight: bold;
+    margin-top: 0 auto; /* Push to the bottom */
+}
+
+/* Custom styles for the input */
+.custom-input {
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 1rem;
+}
+
+/* Custom styles for the button */
+.custom-btn {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.custom-btn:hover {
+    background-color: #0056b3;
+}

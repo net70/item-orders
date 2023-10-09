@@ -1,0 +1,16 @@
+black
+click
+mypy-extensions
+pathspec
+platformdirs
+tomli
+typing-extensions
+python-decouple
+kafka-python
+fastapi
+pydantic==1.10.0a1
+jinja2
+pymongo
+redis
+uvicorn
+watchfiles

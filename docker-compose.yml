@@ -1,0 +1,97 @@
+version: '4'
+services:
+  # Kafka Clusters
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka1:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "8097:8097"
+    restart: always
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:8097,INTERNAL://kafka1:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+  kafka2:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "8098:8098"
+    restart: always
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:8098,INTERNAL://kafka2:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+  kafka3:
+    image: confluentinc/cp-kafka:latest
+    depends_on:
+      - zookeeper
+    ports:
+      - "8099:8099"
+    restart: always
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: EXTERNAL://localhost:8099,INTERNAL://kafka3:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  
+  # Databe Services
+  mongodb:
+    image: mongo:latest
+    ports:
+      - 27017:27017
+    volumes:
+      - C:\Program Files\MongoDB\Server\7.0\data:/data/db
+
+  # Caching Services 
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+
+  # App Services
+  kafka-topics-setup:
+    build:
+      context: ./
+      dockerfile: DockerFile
+    image: python:3.11
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    working_dir: /app
+    volumes: 
+      - ./config/kafka_topics_setup.py:/app/kafka_topics_setup.py
+    command: ["sh", "-c", "sleep 10 && python kafka_topics_setup.py"]
+
+  items_order_api:
+    build:
+      context: ./
+      dockerfile: DockerFile
+    image: python:latest
+    environment:
+      WEB_CONCURRENCY: 4
+    ports:
+      - 8080:8080
+    depends_on:
+      - kafka-topics-setup
+      - mongodb
+      - redis
+    working_dir: /app
+    volumes: 
+      - ./:/app
+    command: ["sh", "-c", "sleep 15 && uvicorn app:app --host 0.0.0.0 --port 8080 --reload"]
