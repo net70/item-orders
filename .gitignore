@@ -4,3 +4,4 @@ original-project-repo.txt
 Screenshot 2023-09-17 015558.png
 __pycache__
 *.log
+.gitignore

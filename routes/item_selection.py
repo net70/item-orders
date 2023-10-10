@@ -20,12 +20,6 @@ db = mongo_client['transactions']['items']
 #TODO: Make this a Redis service (sessions, orders, discount)
 sessions = {}
 orders = {}
-DISCOUNTS = {
-    'entery_10': 0.1,
-    'nice_15': 0.15,
-    'super_20': 0.2,
-    'vip_delight': 0.4
-}
 
 # Create a Jinja2Templates instance with the path to your 'templates' folder
 templates = Jinja2Templates(directory="templates")
@@ -42,13 +36,39 @@ producer = KafkaProducer(
 logger.info("item_selection endpoint initiated")
 
 # Custom dependency to get the session ID from the cookie or create a new one
-def get_or_create_session(session_id: Optional[str] = Cookie(None)):
-    if session_id and session_id in sessions:
-        return session_id
-    else:
-        new_session_id = str(uuid.uuid4())
-        sessions[new_session_id] = {"cart": {}}
-        return new_session_id
+# def get_or_create_session(session_id: Optional[str] = Cookie(None)):
+#     if session_id and session_id in sessions:
+#         return session_id
+#     else:
+#         new_session_id = str(uuid.uuid4())
+#         sessions[new_session_id] = {"cart": {}}
+#         return new_session_id
+
+@item_selection.get('/get_discounts/')
+async def get_discounts():
+    #coupon_codes = await session_manager.redis.get("coupon_codes")
+    return json.loads(await session_manager.redis.get("coupon_codes"))
+
+async def get_or_create_session(session_id: Optional[str] = Cookie(None)):
+  session_exists = await session_manager.session_exists(session_id)
+  if session_exists > 0:
+    return session_id
+  else:
+    new_session_id = str(uuid.uuid4())
+    await session_manager.set_session_data(
+            new_session_id, 
+            {
+                "first_name": "",
+                "last_name": "",
+                "email": "",
+                "cart": {},
+                "total_cost": 0.0,
+                "amount_paid": 0.0,
+                "coupon_code": "",
+                "discount": 1
+            }
+        )
+    return new_session_id
 
 
 @item_selection.post("/add_to_cart/")
