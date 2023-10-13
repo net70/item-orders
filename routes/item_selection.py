@@ -45,21 +45,18 @@ logger.info("item_selection endpoint initiated")
 #         return new_session_id
 
 @item_selection.get('/get_discounts/')
-async def get_discounts(item_id):
-    all_items_initial = await session_manager.get_session_data("coupon_codes", f"cart.asdasdsad")
-    item_update = await session_manager.update_item_in_cart("coupon_codes", {
-        'item_id': 'asdasdsad',
-        'quantity': 12,
-        'price': 100.1
-    })
-    _ = await session_manager.remove_item_from_list("coupon_codes", f"111111")
-    print(_)
-    items_after_del = await session_manager.get_session_data("coupon_codes", f"cart")
-    return {
-        'item_update': item_update,
-        'all_items_initial':all_items_initial,
-        'items_after_del':items_after_del
-    }
+async def get_discounts():
+    try:
+        res = None
+        copun_codes = await session_manager.get_session_data("coupon_codes")
+
+        if copun_codes.get('data', False):
+            res = copun_codes['data']
+
+    except Exception as e:
+        logger.error(f'ITEMS SELECTION - ERROR getting coupon codes from cace: {str(e)}')
+    finally:
+        return res
 
 async def get_or_create_session(session_id: Optional[str] = Cookie(None)):
   session_exists = await session_manager.session_exists(session_id)
@@ -77,7 +74,7 @@ async def get_or_create_session(session_id: Optional[str] = Cookie(None)):
                 "total_cost": 0.0,
                 "amount_paid": 0.0,
                 "coupon_code": "",
-                "discount": 1
+                "discount": 0.0
             }
         )
     return new_session_id

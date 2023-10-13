@@ -5,8 +5,6 @@ from routes.order import order
 from routes.item_selection import item_selection
 from fastapi import FastAPI
 from starlette.staticfiles import StaticFiles
-from redis.commands.json.path import Path
-import json
 
 logger = logging.getLogger("APP")
 app = FastAPI()
