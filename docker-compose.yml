@@ -59,9 +59,10 @@ services:
 
   # Caching Services 
   redis:
-    image: redis:latest
+    image: redislabs/rejson:latest
     ports:
       - 6379:6379
+    restart: always
 
   # App Services
   kafka-topics-setup:

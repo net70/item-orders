@@ -5,6 +5,7 @@ from routes.order import order
 from routes.item_selection import item_selection
 from fastapi import FastAPI
 from starlette.staticfiles import StaticFiles
+from redis.commands.json.path import Path
 import json
 
 logger = logging.getLogger("APP")
@@ -14,7 +15,7 @@ logger.info("FastAPI started")
 
 @app.on_event("startup")
 async def startup_event():
-    await session_manager.redis.set('coupon_codes', json.dumps(COUPON_CODES))
+    await session_manager.set_session_data('coupon_codes', COUPON_CODES)
     logger.info('SessionManager Initialized')
 
 @app.on_event("shutdown")

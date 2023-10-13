@@ -45,9 +45,21 @@ logger.info("item_selection endpoint initiated")
 #         return new_session_id
 
 @item_selection.get('/get_discounts/')
-async def get_discounts():
-    #coupon_codes = await session_manager.redis.get("coupon_codes")
-    return json.loads(await session_manager.redis.get("coupon_codes"))
+async def get_discounts(item_id):
+    all_items_initial = await session_manager.get_session_data("coupon_codes", f"cart.asdasdsad")
+    item_update = await session_manager.update_item_in_cart("coupon_codes", {
+        'item_id': 'asdasdsad',
+        'quantity': 12,
+        'price': 100.1
+    })
+    _ = await session_manager.remove_item_from_list("coupon_codes", f"111111")
+    print(_)
+    items_after_del = await session_manager.get_session_data("coupon_codes", f"cart")
+    return {
+        'item_update': item_update,
+        'all_items_initial':all_items_initial,
+        'items_after_del':items_after_del
+    }
 
 async def get_or_create_session(session_id: Optional[str] = Cookie(None)):
   session_exists = await session_manager.session_exists(session_id)
