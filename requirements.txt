@@ -8,9 +8,13 @@ typing-extensions
 python-decouple
 kafka-python
 fastapi
-pydantic==1.10.0a1
-jinja2
-pymongo
-redis
 uvicorn
+pydantic==1.10.0a1
 watchfiles
+jinja2
+websockets
+pymongo
+sqlalchemy
+psycopg2-binary
+redis
+

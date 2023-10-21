@@ -11,36 +11,36 @@
     </head>
     <body>
         <!-- Navbar -->
-        {% include 'items_navbar.html' %}
+        {% include 'html/items-navbar.html' %}
 
         <!-- Enter Prompt Modal -->
-        {% include 'enter_shop_prompt.html' %}
+        {% include 'html/enter_shop_prompt.html' %}
 
         <!-- Cart Modal -->
-        {% include 'cart_modal.html' %}
+        {% include 'html/cart-modal.html' %}
 
         <!-- Main Ordering Table -->
         <div class="container">
             <h1 class="text-center">ITEMS</h1>
             <div class="row">
                 {% for item in items %}
-                <div class="col-md-4">
+                <div class="col-md-4" id="item-{{item.item_id}}">
                     <div class="card mb-4">
                         <div class="card-body">
                             <div class="inner_row">
                                 <div class="col" style="text-align: left;">
-                                    <h5 class="card-title">{{ item.name }}</h5>
+                                    <h5 class="card-title" id="item-name">{{ item.name }}</h5>
                                     <p class="card-text">{{ item.description }}</p>
                                 </div>
                                 <div class="col">
                                     <div class="text-end">
-                                        <p class="price">Price: ${{ item.price }}</p>
+                                        <p class="price" id="item-price">Price: ${{ item.price }}</p>
                                         <p class="stock">In Stock: {{ item.num_in_stock }}</p>
                                     </div>
                                 </div>
                                 <div class="col d-flex flex-column justify-content-center align-items-center" style="margin-top: 2%;">
-                                    <input type="number" min="1" pattern="[0-9]+" class="form-control text-center custom-input" placeholder="Quantity" id="{{ item.item_id }}-quantity">
-                                    <button class="btn custom-btn btn-primary mt-2" style="margin-left: 5px;"  onclick="addToCart('{{ item.item_id }}', '{{ item.name }}', '{{ item.price }}')">Add to cart</button>
+                                    <input type="number" min="1" pattern="[0-9]+" class="form-control text-center custom-input" placeholder="Quantity" id="quantity">
+                                    <button class="btn custom-btn btn-primary mt-2" style="margin-left: 5px;"  onclick="addToCart('{{ item.item_id }}')">Add to cart</button>
                                 </div>
                             </div>
                         </div>
@@ -50,5 +50,7 @@
             </div>
         </div>
     </body>
-    <script src="templates/js/items-management.js"></script>
+    <!-- <script src="templates/js/page-entery-form.js"></script>
+    <script src="templates/js/cart-management.js"></script>
+    <script src="templates/js/items-management.js"></script> -->
 </html>

@@ -2,6 +2,8 @@ env/
 .vscode/
 original-project-repo.txt
 Screenshot 2023-09-17 015558.png
+item-ordering-system-architecture.png
 __pycache__
 *.log
+*.log.*
 .gitignore

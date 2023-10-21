@@ -9,9 +9,9 @@
     <body>
         <div id="navbar-wrapper">
             <ul>
-              <li><a href="#home">Home</a></li>
+              <li><a href="/">Home</a></li>
               <li><a href="#news">News</a></li>
-              <li><a href="#contact">Contact</a></li>
+              <li><a href="/about">About</a></li>
               <li style="float:right" class="cart-icon">
                 <a class="active" href="#" onclick="openCartModal()">
                   <i class="fas fa-shopping-cart"></i>
@@ -20,22 +20,8 @@
               </li>
             </ul>
           </div>
-
-        <script>
-            // JavaScript to handle scrolling and applying the fixed-navbar class
-            window.addEventListener('scroll', function() {
-              var navbar = document.getElementById('navbar-wrapper');
-              if (window.scrollY > 0) {
-                navbar.classList.add('fixed-navbar');
-              } else {
-                navbar.classList.remove('fixed-navbar');
-              }
-            });
-
-            function openCartModal(){
-                const cartModal = document.querySelector('#cart-modal');
-                cartModal.style.display = 'block';
-            }
-          </script>
     </body>
+    <script src="templates/js/page-entery-form.js"></script>
+    <script src="templates/js/cart-management.js"></script>
+    <script src="templates/js/items-navbar.js"></script>
 </html>

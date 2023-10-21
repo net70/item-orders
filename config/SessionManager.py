@@ -1,16 +1,17 @@
 from decouple import config
-import json
+from config.logging import logging
 import redis.asyncio as redis
 from redis.commands.json.path import Path
 
-COUPON_CODES = {
-    'entery_10': 0.1,
-    'nice_15': 0.15,
-    'super_20': 0.2,
-    'vip_delight': 0.4
-}
-
+logger = logging.getLogger("SessionManager")
 redis_url = config('REDIS')
+
+COUPON_CODES = {
+    'entery10': 0.1,
+    'nice15': 0.15,
+    'super20': 0.2,
+    'vip40': 0.4
+}
 
 class SessionManager:
     #TODO: Add logging to Session Manager
@@ -34,6 +35,7 @@ class SessionManager:
                     }
             else:
                 res['message'] = f'key {key} not found'
+
         except Exception as e:
             res['message'] = str(e)
         finally:
@@ -49,6 +51,7 @@ class SessionManager:
                     res = {'success': True, 'message':'data added to cache'}
             else:
                 res['message'] = 'missing parameters'
+
         except Exception as e:
             res['message'] = str(e)
         finally:
@@ -159,10 +162,18 @@ class SessionManager:
                 res = {'success': True, 'message':f'item {item_id} removed from cart cache'}
             else:
                 res['message'] = f'item {item_id} not found in cart cache'
+
         except Exception as e:
             res['message'] = str(e)
         finally:
             return res
+        
+    async def get_coupon_code_value(self, coupon_code: str) -> float:
+        try:
+            return await self.redis.json().get('coupon_codes', f'{coupon_code}')
+        except Exception as e:
+            logger.error(f'Error retrieving coupon code {coupon_code} from cache')
+            return None
         
     async def cleanup(self):
         await self.redis.aclose()

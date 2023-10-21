@@ -44,17 +44,21 @@ logger.info("item_selection endpoint initiated")
 #         sessions[new_session_id] = {"cart": {}}
 #         return new_session_id
 
-@item_selection.get('/get_discounts/')
-async def get_discounts():
+@item_selection.get('/get_discount/')
+async def get_discount(coupon_code: str):
     try:
         res = None
-        copun_codes = await session_manager.get_session_data("coupon_codes")
+        
+        if not coupon_code:
+            raise TypeError("The `coupon_code` parameter is required.")
 
-        if copun_codes.get('data', False):
-            res = copun_codes['data']
+        discount = await session_manager.get_coupon_code_value(coupon_code)
 
+        if discount:
+            res = discount
+        
     except Exception as e:
-        logger.error(f'ITEMS SELECTION - ERROR getting coupon codes from cace: {str(e)}')
+        logger.error(f'ITEMS SELECTION - ERROR getting coupon code: {str(e)}')
     finally:
         return res
 
@@ -105,6 +109,81 @@ async def remove_from_cart(
 
     return {"message": "Item removed cart successfully", "cart": session["cart"]}
 
+def calculate_total_cost(items, discount: str = None):
+    # Calculate the total cost of items in the cart
+    # STUIPED CODE: it doesn't take into account the quantity of the item.
+    total_cost = 0
+    item_ids = [item['item_id'] for item in items]
+    
+    pipeline = [
+        {
+            '$match': {
+                'item_id': {'$in': item_ids}
+            }
+        },
+        {
+            '$group': {
+                '_id': None,
+                'total_price': {'$sum': '$price'}
+            }
+        }
+    ]
+
+    # Execute the aggregation pipeline
+    result = list(db.aggregate(pipeline))
+
+    # Extract the total price (if items were found)
+    if result:
+        total_cost = result[0]['total_price']
+    else:
+        raise Exception('error getting items prices')
+    
+    total_cost *= DISCOUNTS.get(discount, 1)
+
+    return total_cost    
+
+
+@item_selection.get('/about', response_class=HTMLResponse)
+async def about(request: Request):
+    logger.info('/about/ visited')
+    try:
+        # Render the 'items.html' template with the items data
+        return templates.TemplateResponse("html/about.html", {"request": request})
+    
+    except HTTPException as e:
+        logger.error(f'get items HTTPException: {str(e)}')
+        return HTMLResponse(content=f"<h1>HTTP Error: {str(e)}</h1>", status_code=500)
+    
+    except Exception as e:
+        logger.error(f'get items General Error: {str(e)}')
+        return HTMLResponse(content=f"<h1>General Error: {str(e)}</h1>", status_code=500)
+    
+    finally:
+        logger.info(f'getting /about page ended')
+
+@item_selection.get('/', response_class=HTMLResponse)
+async def get_items(request: Request):
+    logger.info('/index/ started')
+    try:
+        all_items = list(db.find({}))
+
+        # Render the 'items.html' template with the items data
+        return templates.TemplateResponse("html/items.html", {"request": request, "items": all_items})
+    
+    except HTTPException as e:
+        logger.error(f'get items HTTPException: {str(e)}')
+        return HTMLResponse(content=f"<h1>HTTP Error: {str(e)}</h1>", status_code=500)
+    
+    except Exception as e:
+        logger.error(f'get items General Error: {str(e)}')
+        return HTMLResponse(content=f"<h1>General Error: {str(e)}</h1>", status_code=500)
+    
+    finally:
+        logger.info(f'get items confirmation process ended')
+
+
+
+
 @item_selection.post("/submit_order/")
 async def submit_order(
     first_name: str   = None, 
@@ -154,57 +233,3 @@ async def submit_order(
     finally:
         #logging.INFO('')
         pass
-
-
-def calculate_total_cost(items, discount: str = None):
-    # Calculate the total cost of items in the cart
-    total_cost = 0
-    item_ids = [item['item_id'] for item in items]
-    
-    pipeline = [
-        {
-            '$match': {
-                'item_id': {'$in': item_ids}
-            }
-        },
-        {
-            '$group': {
-                '_id': None,
-                'total_price': {'$sum': '$price'}
-            }
-        }
-    ]
-
-    # Execute the aggregation pipeline
-    result = list(db.aggregate(pipeline))
-
-    # Extract the total price (if items were found)
-    if result:
-        total_cost = result[0]['total_price']
-    else:
-        raise Exception('error getting items prices')
-    
-    total_cost *= DISCOUNTS.get(discount, 1)
-
-    return total_cost    
-
-
-@item_selection.get('/', response_class=HTMLResponse)
-async def get_items(request: Request):
-    logger.info('/index/ started')
-    try:
-        all_items = list(db.find({}))
-
-        # Render the 'items.html' template with the items data
-        return templates.TemplateResponse("items.html", {"request": request, "items": all_items})
-    
-    except HTTPException as e:
-        logger.error(f'get items HTTPException: {str(e)}')
-        return HTMLResponse(content=f"<h1>HTTP Error: {str(e)}</h1>", status_code=500)
-    
-    except Exception as e:
-        logger.error(f'get items General Error: {str(e)}')
-        return HTMLResponse(content=f"<h1>General Error: {str(e)}</h1>", status_code=500)
-    
-    finally:
-        logger.info(f'get items confirmation process ended')
