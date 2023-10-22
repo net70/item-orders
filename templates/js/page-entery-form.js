@@ -7,7 +7,8 @@ const order = {
     'items': [],
     'total_cost': 0,
     'amount_paid': 0,
-    'discount': 1
+    'coupon_code': undefined,
+    'discount': 0
   };
 
 function submitEntryForm() {

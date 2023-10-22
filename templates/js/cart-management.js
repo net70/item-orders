@@ -1,10 +1,3 @@
-couponCodes = {
-  'entery10': 0.1,
-  'nice15': 0.15,
-  'super20': 0.2,
-  'vip40': 0.4
-}
-
 let itemsIndex = {};
 let numItemsInCart = 0;
 let cart = [];
@@ -191,6 +184,7 @@ function updateOrderTotal(quantity, price, operation) {
   updateOrderTotalText(discount);
 }
 
+
 function updateOrderTotalText(discount) {
   const order_total_text = document.getElementById('total-price');
 
@@ -206,18 +200,33 @@ function applyCoupon() {
   const couponResultText = document.querySelector('#coupon-result-text');
   const couponCode = document.getElementById('#coupon-code-input').value;
   
-  // Add coupn code discount if valid, notify if otherwise
-  if (couponCodes.hasOwnProperty(couponCode)) {
-      // Update discount info
-      order['discount'] = couponCodes[couponCode];
-      order['amount_paid'] = order['total_cost'] * (1 - couponCodes[couponCode]);
-      updateOrderTotalText(order['discount']);
-      // Update cart discount text
-      couponResultText.style.color = '#007bff';
-      couponResultText.innerText = `Congrats you got ${Number(order['discount']*100)}% off!`;
-  } else {
-    couponResultText.innerText = 'Coupon not found :/';
-  }
+  fetch(`/get_discount/?coupon_code=${couponCode}`)
+    .then((response) => {
+      if (response.status === 200) {
+        return response.json();
+      } else if (response.status === 400) {
+        throw new Error("The coupon code parameter is required.");
+      } else {
+        throw new Error("An error occurred while processing the coupon code.");
+      }
+    }).then((data) => {
+      if (data.valid) {
+        // Update discount info
+        order['discount'] = data.discount;
+        order['amount_paid'] = order['total_cost'] * (1 - data.discount);
+        order['coupon_code'] = couponCode;
+        updateOrderTotalText(order['discount']);
+
+        // Update cart discount text
+        couponResultText.style.color = '#007bff';
+        couponResultText.innerText = `Congrats you got ${Number(data.discount * 100)}% off!`;
+      } else {
+        couponResultText.innerText = 'Coupon not found :/';
+      }
+    })
+    .catch((error) => {
+      couponResultText.innerText = error.message;
+    });
 }
 
 

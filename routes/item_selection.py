@@ -47,15 +47,16 @@ logger.info("item_selection endpoint initiated")
 @item_selection.get('/get_discount/')
 async def get_discount(coupon_code: str):
     try:
-        res = None
+        res = {'valid': False, 'discount': None}
         
         if not coupon_code:
             raise TypeError("The `coupon_code` parameter is required.")
 
         discount = await session_manager.get_coupon_code_value(coupon_code)
-
+        print(f'HERE: {discount}')
         if discount:
-            res = discount
+            res['valid'] = True
+            res['discount'] = discount
         
     except Exception as e:
         logger.error(f'ITEMS SELECTION - ERROR getting coupon code: {str(e)}')
