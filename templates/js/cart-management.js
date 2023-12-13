@@ -4,11 +4,11 @@ let cart = [];
 
 
 function loadCart() {
-  const storedCart = JSON.parse(localStorage.getItem('cart'));
+  const sessionData = JSON.parse(localStorage.getItem('sessionData'));
 
   if (storedCart) {
-    cart = storedCart;
-    order['items'] = cart;
+    cart = sessionData['cart'];
+    order['cart'] = cart;
 
     const cartCounter = document.getElementById('cart-counter');
     cartCounter.innerText = cart.length;
@@ -18,6 +18,10 @@ function loadCart() {
       addItemRowtoUI(item);
       updateOrderTotal(item.quantity, item.price, 'add');
     });
+
+    if (order['coupon_code']) {
+      applyCoupon(order['coupon_code']);
+    }
   }
 }
 
@@ -31,7 +35,7 @@ function findItemIndex(itemId) {
 
 function updateCart(updatedCart) {
   localStorage.setItem('cart', JSON.stringify(updatedCart));
-  order['items'] = updatedCart;
+  order['cart'] = updatedCart;
   cart = updatedCart;
 }
 
@@ -40,7 +44,7 @@ function clearCart() {
   cart = [];
   numItemsInCart = 0;
   itemsIndex = {};
-  order['items'] = [];
+  order['cart'] = [];
   order['amount_paid'] = 0;
   order['total_cost'] = 0;
   order['discount'] = 0;
@@ -196,9 +200,15 @@ function updateOrderTotalText(discount) {
 }
 
 
-function applyCoupon() {
+function applyCoupon(couponCodeInput) {
   const couponResultText = document.querySelector('#coupon-result-text');
-  const couponCode = document.getElementById('#coupon-code-input').value;
+  let couponCode = undefined;
+
+  if (couponCodeInput) {
+    couponCode = couponCodeInput;
+  } else{
+    couponCode = document.getElementById('#coupon-code-input').value;
+  }
   
   fetch(`/get_discount/?coupon_code=${couponCode}`)
     .then((response) => {

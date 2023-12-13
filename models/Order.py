@@ -9,12 +9,13 @@ def generate_uuid_string():
 
 class Order(BaseModel):
     order_id: str = Field(default_factory=generate_uuid_string)
-    order_date: datetime = Field(default_factory=datetime.now)
+    order_date: datetime = Field(default_factory=datetime.utcnow)
     user_id: str | None = None
     first_name: str
     last_name: str
     email: str
-    items: List[OrderItem]
+    cart: List[OrderItem]
     total_cost: float
+    coupon_code: str | None = None
     discount: float | None = None
     confirmed: bool = False

@@ -124,9 +124,12 @@ def generate_random_item(category, name, description, price):
         "num_in_stock": random.randint(1_000, 10_000),
     }
 
+
+if 'item_id' not in db.index_information():
+    db.create_index("item_id", unique=True)
+
 # Number of unique items to add
 num_items_to_add = len(items)
-
 
 # Create and insert unique items into the db
 for name, info in items.items():
@@ -135,6 +138,8 @@ for name, info in items.items():
     if not db.find_one({"name": unique_item["name"]}):
         db.insert_one(unique_item)
         print(f"Added item: {unique_item['name']} to mongo")
+
+
 
 print("Items added successfully.")
 

@@ -1,15 +1,51 @@
-// add data to localstorage
-const order = {
-    'user_id': undefined,
-    'first_name': undefined,
-    'last_name': undefined,
-    'email': undefined,
-    'items': [],
-    'total_cost': 0,
-    'amount_paid': 0,
-    'coupon_code': undefined,
-    'discount': 0
-  };
+let order = undefined;
+
+
+// TODO: add data to localstorage
+function fetchSessionData() {
+  let sessionData = localStorage.getItem('sessionData');
+
+  if (!sessionData){
+    // Make a request to fetch session data
+    fetch('/get_session_data/', {
+      method: 'GET',
+      credentials: 'include'  // Include cookies in the request
+    })
+      .then((response) => {
+        if (response.status === 200) {
+          return response.json();
+        } else {
+          throw new Error('Failed to fetch session data.');
+        }
+      })
+      .then((data) => {
+        // Process the session data
+        sessionData = data;
+      })
+      .catch((error) => {
+        console.error('Error fetching session data:', error);
+      });
+  } else {
+    sessionData = JSON.parse(sessionData);
+  }
+
+  if (!sessionData) {
+    sessionData = {
+      'user_id': undefined,
+      'first_name': undefined,
+      'last_name': undefined,
+      'email': undefined,
+      'cart': [],
+      'total_cost': 0,
+      'amount_paid': 0,
+      'coupon_code': undefined,
+      'discount': 0
+    }
+  }
+  return sessionData;
+}
+
+order = fetchSessionData();
 
 function submitEntryForm() {
     // Validate the form fields

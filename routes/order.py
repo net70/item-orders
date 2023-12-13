@@ -65,7 +65,7 @@ async def confirm_order(order: Order):
         if order_validation_result == False:
             raise HTTPException(status_code=400, detail='Invalid order schema')
         logger.info(f"order {order_id} structure validated")
-
+        
         # Send order to transaction validation services
         order['order_date'] = order['order_date'].isoformat()
         if validate_transaction(order):

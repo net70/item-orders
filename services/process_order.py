@@ -4,15 +4,28 @@ from kafka import KafkaConsumer
 from kafka import KafkaProducer
 from fastapi import FastAPI
 from fastapi import HTTPException
-from config.monogodb import mongo_client
+from config.monogodb import mongo_client, UpdateOne
+from config.logging import logging
 
 KAFKA_BOOTSTRAP_SERVERS = config('KAFKA_BROKER_lOCAL_ENDPOINTS').split(',')
 ORDER_KAFKA_TOPIC = config('ORDER_KAFKA_TOPIC')
 ORDER_CONFIRMATION_KAFKA_TOPIC = config('ORDER_CONFIRMATION_KAFKA_TOPIC')
 
-app = FastAPI()
+COUPON_CODES = {
+    'entery10': 0.1,
+    'nice15': 0.15,
+    'super20': 0.2,
+    'vip40': 0.4
+}
 
-transactions_collection = mongo_client[config('MONGODB_DB')]['transactions']
+logger = logging.getLogger("ORDER VALIDATION SERVICE")
+# app = FastAPI()
+
+
+transactions_db = mongo_client[config('MONGODB_DB')]['transactions']
+items_db        = mongo_client[config('MONGODB_DB')]['items']
+logger.info('Loaded relevant databases')
+
 
 consumer = KafkaConsumer(
     ORDER_KAFKA_TOPIC,
@@ -24,28 +37,10 @@ producer = KafkaProducer(
     bootstrap_servers = KAFKA_BOOTSTRAP_SERVERS,
     value_serializer = lambda x: json.dumps(x).encode('utf-8')
 )
-
-print("Transaction start listening..")
-
-while True:
-    for message in consumer:
-        print("Ongoing Transaction..")
-        consumed_message = message.value
-
-        data = {
-            "customer_id":    consumed_message['user_id'],
-            "customer_email": f"{consumed_message['user_id']}@gmail.com",
-            "total_cost":     consumed_message['total_cost']
-        }
-
-        print("Successful transaction")
-        producer.send(
-            ORDER_CONFIRMATION_KAFKA_TOPIC,
-            value=data
-        )
+logger.info('Loading Kafka producers and consumers')
 
 
-async def save_order_to_db(order: Order):
+async def save_order_to_db(order: dict):
     res = {'status': False, 'message': 'Processing'}
 
     try:
@@ -60,53 +55,127 @@ async def save_order_to_db(order: Order):
     
     finally:
         return res
-
-async def validate_transaction(order: Order):
-    transaction_response = {"message": "Transaction successful.", 'validated': True, 'order_total_cost': 0.0}
-
+    
+async def calc_order_total_cost(order, cart_items):
     try:
-        # Check Items DB to validate if there's enuogh of the Item left in order to fulfill the order.
-        db = mongo_client['transactions']['items']
+        order_id    = order['order_id']
+        coupon_code = order['coupon_code']
+        discount = 0.0
 
-        db_items     = []
-        out_of_stock = []
+        # Fetch prices from the database for the given item_ids
+        item_data = list(items_db.find({"item_id": {"$in": list(cart_items.keys())}}, {"item_id": 1, "price": 1}))
 
-        for item in order.items:
-            # Query the database for the item
-            db_item = db.find_one({"item_id": item.item_id})
-            
-            # Item not found or quantity ordered exceeds quantity in stock
-            if not db_item or db_item.get("num_in_stock", 0) < item.quantity:
-                out_of_stock.append(item.item_id)
-
-                if 'db_items' in locals() or 'db_items' in globals():
-                    del(db_items)
-            else:
-                if 'db_items' in locals() or 'db_items' in globals():
-                    db_items.append((db_item, item.quantity))
-
-        # If all items are available
-        if len(out_of_stock) == 0 and len(db_items) > 0:
-            for db_item in db_items:
-                # Update quantity in stock
-                new_quantity = db_item[0]["num_in_stock"] - db_item[1]
-                db.update_one({"_id": db_item[0]['_id']}, {"$set": {"num_in_stock": new_quantity}})
-
-                # Update order total cost
-                transaction_response['order_total_cost'] += db_item[0]['price']
-
-            # Apply discount if valid
-            transaction_response['order_total_cost'] *= order.discount
-
-            #TODO: Add Kafka Producer to send event so it updates the order record in the background in the background.
-
-        else:
-            transaction_response['validated'] = False
-            transaction_response['message'] = f"Transaction failed. The following items were out of stock: {out_of_stock}"
+        # Calculate total cost using list comprehension and sum
+        total_price = sum(item_info['price'] * cart_items.get(item_info['item_id'], 0) for item_info in item_data)
+        
+        if coupon_code in COUPON_CODES:
+            discount = COUPON_CODES[coupon_code]
+            total_price *= 1 - discount
+        
+        return total_price, discount
 
     except Exception as e:
-        print(f'Error validating transaction: {e}')
+        raise e
 
+async def update_items_in_db(order):
+    try:
+        with mongo_client.start_session() as session:
+            with session.start_transaction():
+                try:
+                    # Convert list of items to dict of items
+                    cart_items = {item['item_id']: item['quantity'] for item in order['cart']}
+                    
+                    update_operations = []
+
+                    for item_id in cart_items.keys():
+                        update_operations.append(UpdateOne(
+                            {
+                                "item_id": item_id,
+                                "num_in_stock": {"$gte": cart_items[item_id]}
+                            },
+                            {
+                                "$inc": {"num_in_stock": -1 * cart_items[item_id]}
+                            },
+                            upsert = False
+                        ))
+                        
+                    result = items_db.bulk_write(update_operations, ordered=False, session=session, bypass_document_validation=True)
+                    
+                    # Check if any item's quantity becomes less than 0
+                    if result.modified_count != len(cart_items):
+                        raise ValueError(f"Error Order {order['order_id']}: Some items were not found in the database")
+
+                    # Calc order total cost
+                    order['total_cost'], order['discount'] = calc_order_total_cost(order, cart_items)
+                    session.commit_transaction()
+
+                    return order
+                    
+                except Exception as e:
+                    if isinstance(e, ValueError):
+                        logger.error(f'Order {order["order_id"]}: Some items not in DB or out of stock. Transaction validation failed.') 
+                    
+                    session.abort_transaction() 
+                    raise e
+
+    except Exception as e:
+        raise e
+
+
+async def validate_transaction(order):
+    transaction_response = {"message": "Transaction successful.", 'validated': True, 'order_total_cost': 0.0}
+    
+    # Check Items DB to validate if there's enuogh of the Item left in order to fulfill the order.
+    try:
+        # Process the order object and perform transaction
+        order = update_items_in_db(order)
+
+        # Update response with details for further processing
+        transaction_response['order_total_cost'] += order['total_cost']
+        transaction_response['discount'] += order['discount']
+        
+        #TODO: Add Kafka Producer to send event so it updates the order record in the background in the background.
+
+    except Exception as e:
+        if isinstance(e, ValueError):
+            transaction_response['message'] = f'Order {order["order_id"]}: Some items not in DB or out of stock. Transaction validation failed. Account not charged.'
+
+        else:    
+            logger.error(f'Order {order["order_id"]} - Error validating transaction: {e}')
+            transaction_response['message'] = f'{e.__class__.__name__}: {e}'
+        
+        transaction_response['validated'] = False
+        transaction_response['order_total_cost'] = 0
+
+        raise e
+    
     finally:
-        print('Order transaction validation process ended')
+        logger.info(f'Order {order["order_id"]} transaction validation process ended')
         return transaction_response
+    
+
+logger.info("Listening for Orders to process")
+
+async def main():
+    while True:
+        for message in consumer:
+            try:
+                logger.info(f"processing incoming order")
+
+                order = message.value
+                await save_order_to_db(order)
+                await validate_transaction(order)
+
+                print("Successful transaction")
+                producer.send(
+                    ORDER_CONFIRMATION_KAFKA_TOPIC,
+                    value=order
+                )
+            
+            except Exception as e:
+                pass
+            finally:
+                pass
+
+if __name__ == '__main__':
+    main()

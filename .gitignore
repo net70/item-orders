@@ -7,3 +7,7 @@ __pycache__
 *.log
 *.log.*
 .gitignore
+redis-data
+mongo-data
+mongo-config
+mongo-data2

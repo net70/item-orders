@@ -5,7 +5,7 @@ from config.SessionManager import session_manager
 from routes.order import confirm_order
 from kafka import KafkaProducer
 from fastapi import APIRouter, HTTPException, Request, Depends, Cookie
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from typing import Optional
 import json
@@ -16,10 +16,6 @@ item_selection = APIRouter()
 logger = logging.getLogger("ITEM SELECT ENDPOINT")
 db = mongo_client['transactions']['items']
 
-
-#TODO: Make this a Redis service (sessions, orders, discount)
-sessions = {}
-orders = {}
 
 # Create a Jinja2Templates instance with the path to your 'templates' folder
 templates = Jinja2Templates(directory="templates")
@@ -35,14 +31,6 @@ producer = KafkaProducer(
 
 logger.info("item_selection endpoint initiated")
 
-# Custom dependency to get the session ID from the cookie or create a new one
-# def get_or_create_session(session_id: Optional[str] = Cookie(None)):
-#     if session_id and session_id in sessions:
-#         return session_id
-#     else:
-#         new_session_id = str(uuid.uuid4())
-#         sessions[new_session_id] = {"cart": {}}
-#         return new_session_id
 
 @item_selection.get('/get_discount/')
 async def get_discount(coupon_code: str):
@@ -53,7 +41,7 @@ async def get_discount(coupon_code: str):
             raise TypeError("The `coupon_code` parameter is required.")
 
         discount = await session_manager.get_coupon_code_value(coupon_code)
-        print(f'HERE: {discount}')
+
         if discount:
             res['valid'] = True
             res['discount'] = discount
@@ -63,27 +51,45 @@ async def get_discount(coupon_code: str):
     finally:
         return res
 
+@item_selection.get("/get_session_id/")
 async def get_or_create_session(session_id: Optional[str] = Cookie(None)):
-  session_exists = await session_manager.session_exists(session_id)
-  if session_exists > 0:
-    return session_id
-  else:
-    new_session_id = str(uuid.uuid4())
-    await session_manager.set_session_data(
+    session_id = session_id if type(session_id)==str else ''
+
+    session_exists = await session_manager.session_exists(session_id)
+
+    if session_exists == 0:
+        new_session_id = str(uuid.uuid4())
+        await session_manager.set_session_data(
             new_session_id, 
             {
-                "first_name": "",
-                "last_name": "",
-                "email": "",
-                "cart": {},
+                "user_id": None,
+                "first_name": None,
+                "last_name": None,
+                "email": None,
+                "cart": [],
                 "total_cost": 0.0,
                 "amount_paid": 0.0,
-                "coupon_code": "",
+                "coupon_code": None,
                 "discount": 0.0
             }
         )
-    return new_session_id
 
+        return new_session_id
+
+    return session_id
+
+
+@item_selection.get('/get_session_data/')
+async def get_session_data(session_id: str = Depends(get_or_create_session)):
+    session_data = await session_manager.get_session_data(session_id)
+
+    response = JSONResponse(content=None)
+    response.set_cookie(key="session_id", value=session_id)
+
+    if session_data['success']:
+        response = JSONResponse(content={"sessionData": session_data['data']})
+    
+    return response
 
 @item_selection.post("/add_to_cart/")
 async def add_to_cart(
@@ -91,11 +97,12 @@ async def add_to_cart(
     quantity: int,
     session_id: str = Depends(get_or_create_session)
 ):
-    # Add the item to the cart associated with the session
-    session = sessions[session_id]
-    session["cart"][item_id] = session["cart"].get(item_id, 0) + quantity
+    return session_id
+    # # Add the item to the cart associated with the session
+    # session = sessions[session_id]
+    # session["cart"][item_id] = session["cart"].get(item_id, 0) + quantity
 
-    return {"message": "Item added to cart successfully", "cart": session["cart"]}
+    # return {"message": "Item added to cart successfully", "cart": session["cart"]}
 
 @item_selection.post("/remove_from_cart/")
 async def remove_from_cart(
@@ -162,6 +169,7 @@ async def about(request: Request):
     finally:
         logger.info(f'getting /about page ended')
 
+
 @item_selection.get('/', response_class=HTMLResponse)
 async def get_items(request: Request):
     logger.info('/index/ started')
@@ -181,7 +189,6 @@ async def get_items(request: Request):
     
     finally:
         logger.info(f'get items confirmation process ended')
-
 
 
 

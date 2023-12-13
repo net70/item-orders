@@ -1,4 +1,6 @@
+// load the cart
 document.addEventListener('DOMContentLoaded', loadCart);
+
 // JavaScript to handle scrolling and applying the fixed-navbar class
 window.addEventListener('scroll', function() {
   var navbar = document.getElementById('navbar-wrapper');
