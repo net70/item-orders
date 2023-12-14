@@ -1,9 +1,9 @@
+
+import asyncio
 import json
 from decouple import config
 from kafka import KafkaConsumer
 from kafka import KafkaProducer
-from fastapi import FastAPI
-from fastapi import HTTPException
 from config.monogodb import mongo_client, UpdateOne
 from config.logging import logging
 
@@ -19,8 +19,6 @@ COUPON_CODES = {
 }
 
 logger = logging.getLogger("ORDER VALIDATION SERVICE")
-# app = FastAPI()
-
 
 transactions_db = mongo_client[config('MONGODB_DB')]['transactions']
 items_db        = mongo_client[config('MONGODB_DB')]['items']
@@ -39,13 +37,28 @@ producer = KafkaProducer(
 )
 logger.info('Loading Kafka producers and consumers')
 
+async def create_transaction_response(
+        transactions_details ="Transaction Failed",
+        confirmed = False,
+        total_cost = 0.0,
+        discount = 0.0,
+        amount_paid = 0.0
+) -> dict:
+
+    return {
+        "transactions_details": transactions_details, 
+        'confirmed':   confirmed,
+        'total_cost':  total_cost,
+        'discount':    discount,
+        'amount_paid': amount_paid
+    }   
+
 
 async def save_order_to_db(order: dict):
     res = {'status': False, 'message': 'Processing'}
 
     try:
-        db = mongo_client['transactions']['orders']
-        inserted_order = db.insert_one(order)
+        inserted_order = transactions_db.insert_one(order)
 
         res['status'] = True
         res['message'] = f'Order successfully saved to DB with id {inserted_order.inserted_id}'
@@ -56,10 +69,11 @@ async def save_order_to_db(order: dict):
     finally:
         return res
     
-async def calc_order_total_cost(order, cart_items):
+async def calc_order_costs(order, cart_items):
     try:
         order_id    = order['order_id']
         coupon_code = order['coupon_code']
+        amount_paid = 0.0
         discount = 0.0
 
         # Fetch prices from the database for the given item_ids
@@ -68,16 +82,18 @@ async def calc_order_total_cost(order, cart_items):
         # Calculate total cost using list comprehension and sum
         total_price = sum(item_info['price'] * cart_items.get(item_info['item_id'], 0) for item_info in item_data)
         
+
         if coupon_code in COUPON_CODES:
             discount = COUPON_CODES[coupon_code]
-            total_price *= 1 - discount
+            amount_paid = total_price * (1 - discount)
         
-        return total_price, discount
+        return amount_paid, total_price, discount
 
     except Exception as e:
+        logger.error(f'Error with order {order_id} - {e.__class__.__name__}: {e}')
         raise e
 
-async def update_items_in_db(order):
+async def process_transaction(order):
     try:
         with mongo_client.start_session() as session:
             with session.start_transaction():
@@ -105,11 +121,21 @@ async def update_items_in_db(order):
                     if result.modified_count != len(cart_items):
                         raise ValueError(f"Error Order {order['order_id']}: Some items were not found in the database")
 
-                    # Calc order total cost
-                    order['total_cost'], order['discount'] = calc_order_total_cost(order, cart_items)
+                    # Calc order costs
+                    order['amount_paid'], order['total_cost'], order['discount'] = calc_order_costs(order, cart_items)
+
+                    # Create response dict
+                    transaction_response = await create_transaction_response(
+                        "Transaction Successful",
+                        True,
+                        order['total_cost'],
+                        order['discount'],
+                        order['amount_paid']
+                    )                  
+                    
                     session.commit_transaction()
 
-                    return order
+                    return transaction_response
                     
                 except Exception as e:
                     if isinstance(e, ValueError):
@@ -123,36 +149,49 @@ async def update_items_in_db(order):
 
 
 async def validate_transaction(order):
-    transaction_response = {"message": "Transaction successful.", 'validated': True, 'order_total_cost': 0.0}
+    transaction_response = await create_transaction_response()
     
     # Check Items DB to validate if there's enuogh of the Item left in order to fulfill the order.
     try:
         # Process the order object and perform transaction
-        order = update_items_in_db(order)
-
-        # Update response with details for further processing
-        transaction_response['order_total_cost'] += order['total_cost']
-        transaction_response['discount'] += order['discount']
-        
-        #TODO: Add Kafka Producer to send event so it updates the order record in the background in the background.
+        transaction_response = process_transaction(order)
+        return transaction_response
 
     except Exception as e:
         if isinstance(e, ValueError):
-            transaction_response['message'] = f'Order {order["order_id"]}: Some items not in DB or out of stock. Transaction validation failed. Account not charged.'
+            transaction_response['transactions_details'] = f'Order {order["order_id"]}: Some items not in DB or out of stock. Transaction validation failed. Account not charged.'
 
         else:    
             logger.error(f'Order {order["order_id"]} - Error validating transaction: {e}')
-            transaction_response['message'] = f'{e.__class__.__name__}: {e}'
-        
-        transaction_response['validated'] = False
-        transaction_response['order_total_cost'] = 0
+            transaction_response['transactions_details'] = f'{e.__class__.__name__}: {e}'
 
         raise e
     
     finally:
         logger.info(f'Order {order["order_id"]} transaction validation process ended')
         return transaction_response
+
+
+async def update_validated_order_details(order_id: str, transaction_response: dict):
+    res = {'status': False, 'message': 'Processing'}
+
+    try:
+        updated_order = transactions_db.update_one(
+            {"order_id": order_id},
+            {
+                "$set": { key: val for key, val in transaction_response.items()}
+            },
+            upsert = False
+        )
+
+        res['status'] = True
+        res['message'] = f'Order successfully saved to DB with id {updated_order.inserted_id}'
     
+    except Exception as e:
+        res['message'] = str(e)
+    
+    finally:
+        return res
 
 logger.info("Listening for Orders to process")
 
@@ -163,9 +202,17 @@ async def main():
                 logger.info(f"processing incoming order")
 
                 order = message.value
-                await save_order_to_db(order)
-                await validate_transaction(order)
+                transaction_response = await create_transaction_response()
+                res = await save_order_to_db(order)
 
+                if res['status']:
+                    transaction_response = await validate_transaction(order)
+
+                else:
+                    transaction_response['transactions_details'] = "Error saving order to DB"
+                
+                await update_validated_order_details(order['order_id'], transaction_response)
+                
                 print("Successful transaction")
                 producer.send(
                     ORDER_CONFIRMATION_KAFKA_TOPIC,
@@ -173,9 +220,14 @@ async def main():
                 )
             
             except Exception as e:
-                pass
+                logger.error(f'Error processing order{order["order_id"]}: {e}')
+                transaction_response['transaction_response'] = f'{e}'
+
+                return transaction_response
+            
             finally:
-                pass
+                logger.info(f'Finished processing order{order["order_id"]}')
+                return transaction_response
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())

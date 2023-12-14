@@ -16,6 +16,8 @@ class Order(BaseModel):
     email: str
     cart: List[OrderItem]
     total_cost: float
+    amount_paid: float | None = None
     coupon_code: str | None = None
     discount: float | None = None
     confirmed: bool = False
+    transactions_details: str | None = None
