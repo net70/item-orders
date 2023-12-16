@@ -132,7 +132,7 @@ async def process_transaction(order):
                         order['discount'],
                         order['amount_paid']
                     )                  
-                    
+
                     session.commit_transaction()
 
                     return transaction_response
@@ -203,31 +203,34 @@ async def main():
 
                 order = message.value
                 transaction_response = await create_transaction_response()
+                
+                # Save order incoming order to DB
                 res = await save_order_to_db(order)
 
+                # Try to validate the transaction if the order was successfully saved to DB
                 if res['status']:
                     transaction_response = await validate_transaction(order)
 
+                    # Update order in DB based on transaction validation result 
+                    res = await update_validated_order_details(order['order_id'], transaction_response)
+
+                    if not res['status']: raise Exception("Could not update succseful order")
+
                 else:
-                    transaction_response['transactions_details'] = "Error saving order to DB"
-                
-                await update_validated_order_details(order['order_id'], transaction_response)
-                
-                print("Successful transaction")
-                producer.send(
-                    ORDER_CONFIRMATION_KAFKA_TOPIC,
-                    value=order
-                )
-            
+                    raise Exception("Error saving order to DB")
+   
             except Exception as e:
                 logger.error(f'Error processing order{order["order_id"]}: {e}')
                 transaction_response['transaction_response'] = f'{e}'
-
-                return transaction_response
             
             finally:
+                # Send the order confirmation status forward in the order pipelines
+                producer.send(
+                    ORDER_CONFIRMATION_KAFKA_TOPIC,
+                    value=order.update(transaction_response)
+                )
+                
                 logger.info(f'Finished processing order{order["order_id"]}')
-                return transaction_response
 
 if __name__ == '__main__':
     asyncio.run(main())
