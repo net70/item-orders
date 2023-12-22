@@ -73,12 +73,15 @@ services:
     image: mongo:latest
     ports:
       - "27018:27017"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: always
     depends_on:
       - mongodb
     volumes:
       - ./config/mongo-data2:/data/db
-    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27017"]
+      - ./config/mongo-config2:/data/configdb"
+    command: ["--replSet", "rs0", "--bind_ip_all", "--port", "27018"]
   
   # postgres:
   #   image: postgres:latest

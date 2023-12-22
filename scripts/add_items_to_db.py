@@ -4,8 +4,15 @@ import pymongo
 
 # MongoDB & Redis connection settings
 mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
-db = mongo_client["transactions"]["items"]
+db = mongo_client["transactions"]
 
+if "items" not in db.list_collection_names():
+    db.create_collection("items")
+items_db = db["items"]
+
+if "orders" not in db.list_collection_names():
+    db.create_collection("orders")
+orders_db = db["orders"]
 
 # Random Items to add to DB (generated with chatGPT)
 items = {
@@ -125,8 +132,11 @@ def generate_random_item(category, name, description, price):
     }
 
 
-if 'item_id' not in db.index_information():
-    db.create_index("item_id", unique=True)
+if 'item_id' not in items_db.index_information():
+    items_db.create_index("item_id", unique=True)
+
+if "order_id" not in orders_db.index_information():
+    orders_db.create_index("order_id", unique=True)
 
 # Number of unique items to add
 num_items_to_add = len(items)
@@ -135,11 +145,9 @@ num_items_to_add = len(items)
 for name, info in items.items():
     unique_item = generate_random_item(info[0], name, info[1], info[2])
     # Ensure uniqueness of the item by using the "name" field
-    if not db.find_one({"name": unique_item["name"]}):
-        db.insert_one(unique_item)
+    if not items_db.find_one({"name": unique_item["name"]}):
+        items_db.insert_one(unique_item)
         print(f"Added item: {unique_item['name']} to mongo")
-
-
 
 print("Items added successfully.")
 

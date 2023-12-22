@@ -37,6 +37,8 @@ async def get_discount(coupon_code: str):
     try:
         res = {'valid': False, 'discount': None}
         
+        # TODO: Need to validate that the user\person did not use the coupon code already or that it's not expired
+
         if not coupon_code:
             raise TypeError("The `coupon_code` parameter is required.")
 
